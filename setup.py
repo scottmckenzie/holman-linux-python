@@ -5,14 +5,14 @@ setup(
     packages=['holman'],
     install_requires=[
         'dbus-python==1.2.4',
-        'gi==1.2'
+        'gi==1.2',
         'gatt>=0.2.7'
     ],
-    version='0.0.5',
+    version='0.0.6',
     description='Holman SDK for Python on Linux',
     keywords='holman',
     url='https://github.com/scottmckenzie/holman-linux-python',
-    download_url='https://github.com/scottmckenzie/holman-linux-python/archive/0.0.5.tar.gz',
+    download_url='https://github.com/scottmckenzie/holman-linux-python/archive/0.0.6.tar.gz',
     author='Scott McKenzie',
     author_email='developers@noizyland.net',
     license='MIT',
