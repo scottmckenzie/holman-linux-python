@@ -191,7 +191,8 @@ class TapTimer(gatt.Device):
         return self._battery_level
 
     def _refresh_state(self):
-        self._state = self._state_characteristic.read_value()
+        if self._state_characteristic:
+            self._state = self._state_characteristic.read_value()
 
     @property
     def is_on(self):
@@ -230,12 +231,9 @@ class TapTimer(gatt.Device):
 
 class TapTimerListener:
     """
-    Base class of listeners for a ``HolmanTapTimer`` with empty handler
+    Base class of listeners for a ``TapTimer`` with empty handler
     implementations.
     """
-    def received_gesture_event(self, event):
-        pass
-
     def started_connecting(self):
         pass
 
