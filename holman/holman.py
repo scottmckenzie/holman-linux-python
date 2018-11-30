@@ -87,12 +87,14 @@ class TapTimer(gatt.Device):
     notified with all events
     """
 
-    HOLMAN_SERVICE_UUID = '0a75f000-f9ad-467a-e564-3c19163ad543'
+    HOLMAN_CO3015_SERVICE_UUID = '0a75f000-f9ad-467a-e564-3c19163ad543'
+    HOLMAN_CO3011_SERVICE_UUID = 'c521f000-0d70-4d4f-8e43-40d84c50ab38' # model BTX1
     STATE_CHARACTERISTIC_UUID = '0000f004-0000-1000-8000-00805f9b34fb'
     MANUAL_CHARACTERISTIC_UUID = '0000f006-0000-1000-8000-00805f9b34fb'
 
     SERVICE_UUIDS = [
-        HOLMAN_SERVICE_UUID]
+        HOLMAN_CO3015_SERVICE_UUID,
+        HOLMAN_CO3011_SERVICE_UUID]
 
     def __init__(self, mac_address, manager):
         """
@@ -150,7 +152,7 @@ class TapTimer(gatt.Device):
 
         holman_service = next((
             service for service in self.services
-            if service.uuid == self.HOLMAN_SERVICE_UUID), None)
+            if service.uuid in self.SERVICE_UUIDS), None)
         if holman_service is None:
             if self.listener:
                 # TODO: Use proper exception subclass
