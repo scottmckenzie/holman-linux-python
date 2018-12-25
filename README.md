@@ -1,5 +1,6 @@
 # Holman Python SDK
-[Holman CO3015](https://www.holmanindustries.com.au/products/bluetooth-tap-timer-co3015/) is a Bluetooth tap timer made by [Holman](https://www.holmanindustries.com.au/).
+[Holman CO3015](https://www.holmanindustries.com.au/products/bluetooth-tap-timer-co3015/)
+and [BTX1](https://www.holmanindustries.com.au/products/btx1-tap-mounted-smart-valve/) are Bluetooth tap timers made by [Holman](https://www.holmanindustries.com.au/).
 
 The Holman Python SDK for Linux allows you to integrate your Holman(s) into any type of Linux application or script that can execute Python code.
 
