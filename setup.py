@@ -6,11 +6,11 @@ setup(
     install_requires=[
         'gatt>=0.2.7'
     ],
-    version='0.0.7',
+    version='0.1.0',
     description='Holman SDK for Python on Linux',
     keywords='holman',
     url='https://github.com/scottmckenzie/holman-linux-python',
-    download_url='https://github.com/scottmckenzie/holman-linux-python/archive/0.0.7.tar.gz',
+    download_url='https://github.com/scottmckenzie/holman-linux-python/archive/0.1.0.tar.gz',
     author='Scott McKenzie',
     author_email='developers@noizyland.net',
     license='MIT',
