@@ -2,6 +2,12 @@
 [Holman CO3015](https://www.holmanindustries.com.au/products/bluetooth-tap-timer-co3015/)
 and [BTX1](https://www.holmanindustries.com.au/products/btx1-tap-mounted-smart-valve/) are Bluetooth tap timers made by [Holman](https://www.holmanindustries.com.au/).
 
+**Supported / discovered devices:**
+- Confirmed on BX2 Dual Outlet Bluetooth Tap Timer MK1 (SKU CO3112) only. Newer BX2 not tested.
+- Default discovery allowlist is exact advertised names `Tap Timer` and `BX2`.
+- BX2 MK1: two-zone start via f006 byte 1 (zone 1 = tap index 0, zone 2 = tap index 1). Session unlock on c001 (AE 8E) when that characteristic exists.
+- Extra exact names: `HOLMAN_ACCEPTED_ALIASES` or constructor `accepted_aliases`. Replacement service UUID list: `HOLMAN_SERVICE_UUIDS` or constructor `service_uuids`.
+
 The Holman Python SDK for Linux allows you to integrate your Holman(s) into any type of Linux application or script that can execute Python code.
 
 ## Prerequisites

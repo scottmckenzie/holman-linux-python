@@ -1,7 +1,52 @@
 """
 Module for managing Holman Bluetooth tap timers.
 """
+import os
+
 import gatt
+
+
+_DEFAULT_ALIASES = ('Tap Timer', 'BX2')
+
+
+def _get_default_aliases():
+    """
+    Tap Timer / BX2 allowlist, plus HOLMAN_ACCEPTED_ALIASES extras.
+
+    If another Holman or compatible timer appears with a different
+    advertised name, it can be added via env without a code change.
+    """
+    aliases = list(_DEFAULT_ALIASES)
+    env = os.environ.get('HOLMAN_ACCEPTED_ALIASES')
+    if env:
+        for name in env.split(','):
+            name = name.strip()
+            if name and name not in aliases:
+                aliases.append(name)
+    return tuple(aliases)
+
+
+def _get_default_service_uuids():
+    '''
+    CO3015 / CO3012 / CO3011 unless HOLMAN_SERVICE_UUIDS is set.
+
+    When the env var is set, the comma-separated value fully replaces
+    the hardcoded defaults (not extras). Unset or blank = defaults.
+
+    If another Holman or compatible timer appears with a different
+    vendor service UUID, it can be matched via env without a code change.
+    '''
+    env = os.environ.get('HOLMAN_SERVICE_UUIDS')
+    if env and env.strip():
+        uuids = []
+        for raw in env.split(','):
+            raw = raw.strip().lower()
+            if raw and raw not in uuids:
+                uuids.append(raw)
+        if uuids:
+            return tuple(uuids)
+    return tuple(TapTimer.SERVICE_UUIDS)
+
 
 
 class TapTimerManager(gatt.DeviceManager):
@@ -9,16 +54,35 @@ class TapTimerManager(gatt.DeviceManager):
     Entry point for managing and discovering Holman ``TapTimer``s.
     """
 
-    def __init__(self, adapter_name='hci0'):
+    def __init__(self, adapter_name='hci0', accepted_aliases=None,
+                 service_uuids=None):
         """
         Instantiates a ``TapTimerManager``
 
         :param adapter_name: name of Bluetooth adapter used by this
                              tap timer manager
+        :param accepted_aliases: exact advertised names to accept during
+                                 discovery. Defaults to ``('Tap Timer', 'BX2')``
+                                 plus extra names from ``HOLMAN_ACCEPTED_ALIASES``
+                                 (comma-separated exact strings).
+        :param service_uuids: vendor service UUIDs for discovery and
+                              connect-time service pick. Defaults to
+                              CO3015 / CO3012 / CO3011. When
+                              ``HOLMAN_SERVICE_UUIDS`` is set, that
+                              comma-separated list fully replaces the
+                              defaults. Constructor wins over env.
         """
-        super().__init__(adapter_name)
+        # DeviceManager.__init__ calls update_devices() -> make_device(),
+        # which reads accepted_aliases and service_uuids.
+        if accepted_aliases is None:
+            accepted_aliases = _get_default_aliases()
+        self.accepted_aliases = tuple(accepted_aliases)
+        if service_uuids is None:
+            service_uuids = _get_default_service_uuids()
+        self.service_uuids = tuple(u.lower() for u in service_uuids)
         self.listener = None
         self.discovered_tap_timers = {}
+        super().__init__(adapter_name)
 
     def tap_timers(self):
         """
@@ -33,12 +97,13 @@ class TapTimerManager(gatt.DeviceManager):
         Assign a `TapTimerManagerListener` to the `listener` attribute
         to collect discovered Holmans.
         """
-        super().start_discovery(service_uuids=TapTimer.SERVICE_UUIDS)
+        super().start_discovery(service_uuids=list(self.service_uuids))
 
     def make_device(self, mac_address):
         device = gatt.Device(
             mac_address=mac_address, manager=self, managed=False)
-        if device.alias() != 'Tap Timer':
+        alias = device.alias() or ''
+        if alias not in self.accepted_aliases:
             return None
         return TapTimer(mac_address=mac_address, manager=self)
 
@@ -86,17 +151,20 @@ class TapTimer(gatt.Device):
     :param listener: instance of ``TapTimerListener`` that will be
     notified with all events
     """
-
     HOLMAN_CO3015_SERVICE_UUID = '0a75f000-f9ad-467a-e564-3c19163ad543'
-    HOLMAN_CO3011_SERVICE_UUID = 'c521f000-0d70-4d4f-8e43-40d84c50ab38' # model BTX1
+    HOLMAN_CO3012_SERVICE_UUID = 'aacaebbb-af4b-baf3-7361-989ffeb0b129'
+    HOLMAN_CO3011_SERVICE_UUID = 'c521f000-0d70-4d4f-8e43-40d84c50ab38'  # BTX1 / BX2
     STATE_CHARACTERISTIC_UUID = '0000f004-0000-1000-8000-00805f9b34fb'
     MANUAL_CHARACTERISTIC_UUID = '0000f006-0000-1000-8000-00805f9b34fb'
+    AUTH_CHARACTERISTIC_UUID = '0000c001-0000-1000-8000-00805f9b34fb'
+    AUTH_PAYLOAD = bytes((0xAE, 0x8E))
 
     SERVICE_UUIDS = [
         HOLMAN_CO3015_SERVICE_UUID,
+        HOLMAN_CO3012_SERVICE_UUID,
         HOLMAN_CO3011_SERVICE_UUID]
 
-    def __init__(self, mac_address, manager):
+    def __init__(self, mac_address, manager, service_uuids=None):
         """
         Create an instance with given Bluetooth adapter name and MAC
         address.
@@ -105,13 +173,24 @@ class TapTimer(gatt.Device):
         format: ``AA:BB:CC:DD:EE:FF``
         :param manager: reference to the `TapTimerManager` that manages
         this tap timer
+        :param service_uuids: vendor service UUIDs for connect-time
+                              service pick. Defaults to the manager
+                              list, else the same resolved defaults /
+                              ``HOLMAN_SERVICE_UUIDS`` replace list.
         """
         super().__init__(mac_address=mac_address, manager=manager)
+
+        if service_uuids is None:
+            service_uuids = getattr(manager, 'service_uuids', None)
+        if service_uuids is None:
+            service_uuids = _get_default_service_uuids()
+        self.service_uuids = tuple(u.lower() for u in service_uuids)
 
         self.listener = None
         self._battery_level = None
         self._manual_characteristic = None
         self._state_characteristic = None
+        self._auth_characteristic = None
         self._state = bytes([0])
 
     def connect(self):
@@ -150,9 +229,10 @@ class TapTimer(gatt.Device):
     def services_resolved(self):
         super().services_resolved()
 
+        accepted = {uuid.lower() for uuid in self.service_uuids}
         holman_service = next((
             service for service in self.services
-            if service.uuid in self.SERVICE_UUIDS), None)
+            if service.uuid.lower() in accepted), None)
         if holman_service is None:
             if self.listener:
                 # TODO: Use proper exception subclass
@@ -181,6 +261,9 @@ class TapTimer(gatt.Device):
                     "Holman GATT characteristic %s missing",
                     self.STATE_CHARACTERISTIC_UUID))
             return
+        self._auth_characteristic = next((
+            char for char in holman_service.characteristics
+            if char.uuid == self.AUTH_CHARACTERISTIC_UUID), None)
         self._refresh_state()
 
         # TODO: Only fire connected event when we read the firmware
@@ -207,19 +290,36 @@ class TapTimer(gatt.Device):
         """The name of the tap timer."""
         return str(self.alias())
 
-    def start(self, runtime=1):
+    def _unlock(self):
         """
-        Turn on the tap for ```runtime``` minutes.
+        Session unlock so the tap will accept f006 start/stop writes.
 
-        :param runtime: the number of minutes to run the tap
+        BX1/BX2 expose GATT c001; writing AE 8E unlocks the session for
+        subsequent f006 manual control. If c001 is missing, no-op.
         """
-        runtime = 255 if runtime > 255 else runtime
+        if self._auth_characteristic:
+            self._auth_characteristic.write_value(self.AUTH_PAYLOAD)
+
+    def start(self, runtime=1, zone=1):
+        '''
+        Turn on the tap for ``runtime`` minutes.
+
+        f006 start is ``[0x01, tap_index, 0x00, minutes]``. Byte 0 is on
+        (0x01). Byte 1 is the tap index: 0x00 = zone 1, 0x01 = zone 2
+        (hex ``010100NN`` for zone 2). Zone 1 matches the original SDK ON
+        payload ``01 00 00 <mins>``.
+        '''
+        runtime = 255 if runtime > 255 else max(1, int(runtime))
+        zone = max(1, min(int(zone), 2))
+        tap = 0x00 if zone == 1 else 0x01
+        self._unlock()
         if self._manual_characteristic:
-            value = bytes([0x01, 0x00, 0x00, runtime])
+            value = bytes([0x01, tap, 0x00, runtime])
             self._manual_characteristic.write_value(value)
 
     def stop(self):
         """Turn off the tap."""
+        self._unlock()
         if self._manual_characteristic:
             value = bytes([0x00, 0x00, 0x00, 0x00])
             self._manual_characteristic.write_value(value)

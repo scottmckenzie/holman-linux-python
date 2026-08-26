@@ -90,6 +90,18 @@ def main():
         metavar='address',
         type=str,
         help="Disconnect a Holman tap timer with a given MAC address")
+    arg_commands_group.add_argument(
+        '--start',
+        metavar='address',
+        type=str,
+        help="Connect and start a zone for --minutes (default zone 1)")
+    arg_commands_group.add_argument(
+        '--stop',
+        metavar='address',
+        type=str,
+        help="Connect and send all-off")
+    arg_parser.add_argument('--minutes', type=int, default=2, help="Minutes for --start")
+    arg_parser.add_argument('--zone', type=int, default=1, help="Zone 1 (tap index 0) or 2 (tap index 1). Default 1")
     args = arg_parser.parse_args()
 
     global tap_timer_manager
@@ -114,6 +126,28 @@ def main():
         tap_timer = holman.TapTimer(mac_address=args.disconnect, manager=tap_timer_manager)
         tap_timer.disconnect()
         return
+    elif args.start:
+        tap_timer = holman.TapTimer(mac_address=args.start, manager=tap_timer_manager)
+
+        class StartListener(TapTimerTestListener):
+            def connect_succeeded(self):
+                super().connect_succeeded()
+                print(f"starting zone={args.zone} minutes={args.minutes}")
+                self.tap_timer.start(runtime=args.minutes, zone=args.zone)
+
+        tap_timer.listener = StartListener(tap_timer=tap_timer)
+        tap_timer.connect()
+    elif args.stop:
+        tap_timer = holman.TapTimer(mac_address=args.stop, manager=tap_timer_manager)
+
+        class StopListener(TapTimerTestListener):
+            def connect_succeeded(self):
+                super().connect_succeeded()
+                print("stopping")
+                self.tap_timer.stop()
+
+        tap_timer.listener = StopListener(tap_timer=tap_timer)
+        tap_timer.connect()
 
     print("Terminate with Ctrl+C")
     try:
