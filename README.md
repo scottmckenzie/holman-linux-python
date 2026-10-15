@@ -5,7 +5,7 @@ and [BTX1](https://www.holmanindustries.com.au/products/btx1-tap-mounted-smart-v
 The Holman Python SDK for Linux allows you to integrate your Holman(s) into any type of Linux application or script that can execute Python code.
 
 ## Prerequisites
-The Holman SDK requires [Python 3.4+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
+The Holman SDK requires [Python 3.9+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
 
 ## Installation
 These instructions assume a Debian-based Linux.
@@ -87,11 +87,13 @@ Please note that communication with your Bluetooth adapter happens over BlueZ's 
 ```python
 import holman
 
+
 class TapTimerManagerPrintListener(holman.TapTimerManagerListener):
     def tap_timer_discovered(self, tap_timer):
         print("Discovered Holman tap_timer", tap_timer.mac_address)
 
-manager = holman.TapTimerManager(adapter_name='hci0')
+
+manager = holman.TapTimerManager(adapter_name="hci0")
 manager.listener = TapTimerManagerPrintListener()
 manager.start_discovery()
 manager.run()
@@ -108,10 +110,11 @@ The following example connects to a Holman tap timer manually:
 ```python
 import holman
 
-manager = holman.TapTimerManager(adapter_name='hci0')
+manager = holman.TapTimerManager(adapter_name="hci0")
 
-tap_timer = holman.TapTimer(mac_address='AA:BB:CC:DD:EE:FF', manager=manager)
-tap_timer.listener = holman.TapTimerListener() # Use an instance of your own holman.TapTimerListener subclass
+tap_timer = holman.TapTimer(mac_address="AA:BB:CC:DD:EE:FF", manager=manager)
+# Use an instance of your own holman.TapTimerListener subclass
+tap_timer.listener = holman.TapTimerListener()
 tap_timer.connect()
 
 manager.run()
@@ -122,6 +125,28 @@ As with Holman tap timer discovery, remember to start the Bluetooth event loop w
 ### Start the tap running
 
 Once a Holman tap timer is connected you can start the tap with `TapTimer.start(runtime=1)`.  Pass this a runtime (in minutes) for how long to run the tap.
+
+## Development
+
+The project uses [uv](https://docs.astral.sh/uv/) for environment and dependency management.
+
+```
+uv sync                 # create .venv with the SDK and dev tools
+uv run pytest           # run the tests (no Bluetooth hardware needed)
+uv run ruff check .     # lint
+uv run ruff format .    # format
+uv run pyrefly check    # type check
+uv build                # build sdist and wheel into dist/
+```
+
+The tests replace the `gatt` library with an in-memory fake (`tests/conftest.py`), so they don't need `python3-dbus` or `bluetoothd`. Testing against a real tap timer still requires the system setup above; to use the apt-installed `python3-dbus` and `python3-gi` from the uv environment, create it on the system interpreter they were built for, then run `holmanctl` from it:
+
+```
+sudo apt-get install python3-dbus python3-gi
+uv venv --system-site-packages --python /usr/bin/python3
+uv sync
+sudo .venv/bin/holmanctl --discover
+```
 
 ## Support
 

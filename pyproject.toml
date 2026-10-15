@@ -1,0 +1,50 @@
+[project]
+name = "holman"
+version = "0.1.0"
+description = "Holman SDK for Python on Linux"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.txt"]
+authors = [{ name = "Scott McKenzie", email = "developers@noizyland.net" }]
+keywords = ["holman"]
+requires-python = ">=3.9"
+# python3-dbus is also required at runtime, but comes from apt (not PyPI).
+dependencies = ["gatt>=0.2.7"]
+
+[project.urls]
+Homepage = "https://github.com/scottmckenzie/holman-linux-python"
+
+[project.scripts]
+holmanctl = "holmanctl:main"
+
+[dependency-groups]
+dev = [
+    "pyrefly>=1.3",
+    "pytest>=8",
+    "ruff>=0.17",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["holman", "holmanctl.py"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.claude", "/CLAUDE.md", "/uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pyrefly]
+project-includes = ["holman", "holmanctl.py", "tests"]
+python-version = "3.9"
+search-path = ["typings"]
