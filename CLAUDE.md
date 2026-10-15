@@ -16,7 +16,7 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 
 ## Development
 - Before finishing a change, run `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .` and `uv run pyrefly check`
-- CI (`.github/workflows/ci.yml`) runs the same checks, with pytest on Python 3.9 and 3.14; keep `requires-python` and that matrix in sync
+- CI (`.github/workflows/ci.yml`) runs the same checks, with pytest on Python 3.10 and 3.14; keep `requires-python` and that matrix in sync
 - Ruff formats the Python snippets in `README.md` too
 - Tests run with `--import-mode=importlib`, so share test helpers as fixtures in `conftest.py`, not by importing modules from `tests/`
 - Tests cover logic only; when adding a `gatt` API call, add it to the fakes in `tests/conftest.py`
@@ -35,12 +35,13 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 
 ## Python Version
 
-Python 3.9 minimum (`requires-python` in pyproject.toml; ruff and pyrefly also target 3.9). Use the newest syntax 3.9 supports:
+Python 3.10 minimum (`requires-python` in pyproject.toml; ruff and pyrefly also target 3.10). Use the newest syntax 3.10 supports:
+- `X | None` instead of `Optional[X]`
 - `list[str]` instead of `List[str]`
 - `dict[str, Any]` instead of `Dict[str, Any]`
 - `tuple[int, str]` instead of `Tuple[int, str]`
-- `X | None` instead of `Optional[X]` only in annotations, with `from __future__ import annotations` at the top of the module; `|` between types fails at runtime on 3.9 anywhere else (e.g. `isinstance`, aliases)
-- No `match` statements (3.10) or `type X = ...` aliases (3.12); use `if`/`elif` and plain `X = ...` alias assignments (`typing.TypeAlias` is 3.10+, and `typing_extensions` isn't a dependency)
+- `X: TypeAlias = ...` (from `typing`) for type aliases; `type X = ...` is 3.12+
+- Match statements for enum/type dispatch where appropriate
 
 ## Manage packages
 
