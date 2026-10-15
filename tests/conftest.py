@@ -19,6 +19,7 @@ class FakeDeviceManager:
         self.known_devices = []
         self.discovery_uuids = None
         self.stopped = False
+        self.ran = False
 
     def devices(self):
         return self.known_devices
@@ -30,7 +31,12 @@ class FakeDeviceManager:
         pass
 
     def stop(self):
-        self.stopped = True
+        # Like gatt, stop() only quits a loop that is already running.
+        if self.ran:
+            self.stopped = True
+
+    def run(self):
+        self.ran = True
 
 
 class FakeDevice:
@@ -106,6 +112,12 @@ class RecordingListener(holman.TapTimerListener):
     def disconnect_succeeded(self):
         self.events.append("disconnect_succeeded")
 
+    def timer_written(self):
+        self.events.append("timer_written")
+
+    def timer_write_failed(self, error):
+        self.events.append(("timer_write_failed", str(error)))
+
 
 @pytest.fixture
 def manager():
@@ -149,3 +161,52 @@ def make_holman_service():
         return FakeService(service_uuid, chars)
 
     return make
+
+
+@pytest.fixture
+def simulated_tap_timer(monkeypatch, make_holman_service):
+    """
+    Make every ``TapTimer`` behave like a reachable device: ``connect()``
+    resolves a Holman service, writes to it report back, and
+    ``disconnect()`` completes.
+
+    Set ``connect_error`` or ``write_error`` on the returned object to
+    simulate those failures; ``tap_timers`` collects connected instances.
+    """
+
+    class Simulation:
+        connect_error = None
+        write_error = None
+        tap_timers = []
+
+    simulation = Simulation()
+
+    def connect(device):
+        device.connect_calls += 1
+        simulation.tap_timers.append(device)
+        if simulation.connect_error is not None:
+            device.connect_failed(simulation.connect_error)
+            return
+        service = make_holman_service()
+        for char in service.characteristics:
+            char.write_value = _reporting_write(device, char)
+        device.services = [service]
+        device.services_resolved()
+
+    def _reporting_write(device, char):
+        def write_value(value):
+            char.written.append(value)
+            if simulation.write_error is not None:
+                device.characteristic_write_value_failed(char, simulation.write_error)
+            else:
+                device.characteristic_write_value_succeeded(char)
+
+        return write_value
+
+    def disconnect(device):
+        device.disconnect_calls += 1
+        device.disconnect_succeeded()
+
+    monkeypatch.setattr(FakeDevice, "connect", connect)
+    monkeypatch.setattr(FakeDevice, "disconnect", disconnect)
+    return simulation

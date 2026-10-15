@@ -101,3 +101,40 @@ def test_connect_failed_notifies_listener(tap_timer, listener):
 
 def test_battery_level_not_decoded(tap_timer):
     assert tap_timer.battery_level() is None
+
+
+def test_write_succeeded_on_manual_characteristic_notifies(
+    make_holman_service, tap_timer, listener
+):
+    resolve(tap_timer, make_holman_service())
+    listener.events.clear()
+    tap_timer.characteristic_write_value_succeeded(manual_char(tap_timer))
+    assert listener.events == ["timer_written"]
+
+
+def test_write_failed_on_manual_characteristic_notifies(
+    make_holman_service, tap_timer, listener
+):
+    resolve(tap_timer, make_holman_service())
+    listener.events.clear()
+    tap_timer.characteristic_write_value_failed(manual_char(tap_timer), "rejected")
+    assert listener.events == [("timer_write_failed", "rejected")]
+
+
+def test_write_on_other_characteristic_does_not_notify(
+    make_holman_service, tap_timer, listener
+):
+    resolve(tap_timer, make_holman_service())
+    listener.events.clear()
+    state = next(c for c in tap_timer.services[0].characteristics if c.uuid != MANUAL)
+    tap_timer.characteristic_write_value_succeeded(state)
+    tap_timer.characteristic_write_value_failed(state, "rejected")
+    assert listener.events == []
+
+
+def test_base_listener_accepts_write_events(make_holman_service, tap_timer):
+    # Listeners written before these events existed must keep working.
+    tap_timer.listener = holman.TapTimerListener()
+    resolve(tap_timer, make_holman_service())
+    tap_timer.characteristic_write_value_succeeded(manual_char(tap_timer))
+    tap_timer.characteristic_write_value_failed(manual_char(tap_timer), "rejected")

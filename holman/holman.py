@@ -244,9 +244,13 @@ class TapTimer(gatt.Device):
 
     def characteristic_write_value_succeeded(self, characteristic):
         self._refresh_state()
+        if self.listener and characteristic == self._manual_characteristic:
+            self.listener.timer_written()
 
     def characteristic_write_value_failed(self, characteristic, error):
         self._refresh_state()
+        if self.listener and characteristic == self._manual_characteristic:
+            self.listener.timer_write_failed(error)
 
 
 class TapTimerListener:
@@ -268,4 +272,12 @@ class TapTimerListener:
         pass
 
     def disconnect_succeeded(self):
+        pass
+
+    def timer_written(self):
+        """Called when a ``start()`` or ``stop()`` reached the tap timer."""
+        pass
+
+    def timer_write_failed(self, error):
+        """Called when a ``start()`` or ``stop()`` could not be written."""
         pass
