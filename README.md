@@ -5,7 +5,7 @@ and [BTX1](https://www.holmanindustries.com.au/products/btx1-tap-mounted-smart-v
 The Holman Python SDK for Linux allows you to integrate your Holman(s) into any type of Linux application or script that can execute Python code.
 
 ## Prerequisites
-The Holman SDK requires [Python 3.9+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
+The Holman SDK requires [Python 3.10+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
 
 ## Installation
 These instructions assume a Debian-based Linux.
