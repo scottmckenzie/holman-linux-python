@@ -35,13 +35,12 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 
 ## Python Version
 
-Python 3.12 minimum (`requires-python` in pyproject.toml). Use modern syntax:
-- `X | None` instead of `Optional[X]`
+Python 3.9 minimum (`requires-python` in pyproject.toml; ruff and pyrefly also target 3.9). Use the newest syntax 3.9 supports:
 - `list[str]` instead of `List[str]`
 - `dict[str, Any]` instead of `Dict[str, Any]`
 - `tuple[int, str]` instead of `Tuple[int, str]`
-- `type X = ...` for type aliases (Python 3.12)
-- Match statements for enum/type dispatch where appropriate
+- `X | None` instead of `Optional[X]` only in annotations, with `from __future__ import annotations` at the top of the module; `|` between types fails at runtime on 3.9 anywhere else (e.g. `isinstance`, aliases)
+- No `match` statements (3.10) or `type X = ...` aliases (3.12); use `if`/`elif` and plain `X = ...` alias assignments (`typing.TypeAlias` is 3.10+, and `typing_extensions` isn't a dependency)
 
 ## Manage packages
 
