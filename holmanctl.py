@@ -2,15 +2,15 @@
 
 import sys
 from argparse import ArgumentParser
-import holman
 
-tap_timer_manager = None
+import holman
 
 
 class TapTimerPrintListener(holman.TapTimerListener):
     """
     An implementation of ``TapTimerListener`` that prints each event.
     """
+
     def __init__(self, tap_timer):
         self.tap_timer = tap_timer
 
@@ -40,7 +40,7 @@ class TapTimerTestListener(TapTimerPrintListener):
 
     def connect_failed(self, error):
         super().connect_failed(error)
-        tap_timer_manager.stop()
+        self.tap_timer.manager.stop()
         sys.exit(0)
 
     def disconnect_succeeded(self):
@@ -51,7 +51,7 @@ class TapTimerTestListener(TapTimerPrintListener):
             print("Disconnected, reconnecting...")
             self.tap_timer.connect()
         else:
-            tap_timer_manager.stop()
+            self.tap_timer.manager.stop()
             sys.exit(0)
 
 
@@ -63,36 +63,38 @@ class TapTimerManagerPrintListener(holman.TapTimerManagerListener):
 def main():
     arg_parser = ArgumentParser(description="Holman Tap Timer Demo")
     arg_parser.add_argument(
-        '--adapter',
-        default='hci0',
-        help="Name of Bluetooth adapter, defaults to 'hci0'")
+        "--adapter",
+        default="hci0",
+        help="Name of Bluetooth adapter, defaults to 'hci0'",
+    )
     arg_commands_group = arg_parser.add_mutually_exclusive_group(required=True)
     arg_commands_group.add_argument(
-        '--discover',
-        action='store_true',
-        help="Lists all nearby Holman tap timers")
+        "--discover", action="store_true", help="Lists all nearby Holman tap timers"
+    )
     arg_commands_group.add_argument(
-        '--known',
-        action='store_true',
-        help="Lists all known Holman tap timers")
+        "--known", action="store_true", help="Lists all known Holman tap timers"
+    )
     arg_commands_group.add_argument(
-        '--connect',
-        metavar='address',
+        "--connect",
+        metavar="address",
         type=str,
-        help="Connect to a Holman tap timer with a given MAC address")
+        help="Connect to a Holman tap timer with a given MAC address",
+    )
     arg_commands_group.add_argument(
-        '--auto',
-        metavar='address',
+        "--auto",
+        metavar="address",
         type=str,
-        help="Connect and automatically reconnect to a Holman tap timer with a given MAC address")
+        help="Connect and automatically reconnect to a Holman tap timer "
+        "with a given MAC address",
+    )
     arg_commands_group.add_argument(
-        '--disconnect',
-        metavar='address',
+        "--disconnect",
+        metavar="address",
         type=str,
-        help="Disconnect a Holman tap timer with a given MAC address")
+        help="Disconnect a Holman tap timer with a given MAC address",
+    )
     args = arg_parser.parse_args()
 
-    global tap_timer_manager
     tap_timer_manager = holman.TapTimerManager(adapter_name=args.adapter)
 
     if args.discover:
@@ -100,7 +102,7 @@ def main():
         tap_timer_manager.start_discovery()
     if args.known:
         for tap_timer in tap_timer_manager.tap_timers():
-            print("[%s] %s" % (tap_timer.mac_address, tap_timer.alias()))
+            print(f"[{tap_timer.mac_address}] {tap_timer.alias()}")
         return
     elif args.connect:
         tap_timer = holman.TapTimer(mac_address=args.connect, manager=tap_timer_manager)
@@ -108,10 +110,14 @@ def main():
         tap_timer.connect()
     elif args.auto:
         tap_timer = holman.TapTimer(mac_address=args.auto, manager=tap_timer_manager)
-        tap_timer.listener = TapTimerTestListener(tap_timer=tap_timer, auto_reconnect=True)
+        tap_timer.listener = TapTimerTestListener(
+            tap_timer=tap_timer, auto_reconnect=True
+        )
         tap_timer.connect()
     elif args.disconnect:
-        tap_timer = holman.TapTimer(mac_address=args.disconnect, manager=tap_timer_manager)
+        tap_timer = holman.TapTimer(
+            mac_address=args.disconnect, manager=tap_timer_manager
+        )
         tap_timer.disconnect()
         return
 
@@ -121,5 +127,6 @@ def main():
     except KeyboardInterrupt:
         pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

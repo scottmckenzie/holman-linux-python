@@ -1,6 +1,7 @@
 """
 Module for managing Holman Bluetooth tap timers.
 """
+
 import gatt
 
 
@@ -9,7 +10,7 @@ class TapTimerManager(gatt.DeviceManager):
     Entry point for managing and discovering Holman ``TapTimer``s.
     """
 
-    def __init__(self, adapter_name='hci0'):
+    def __init__(self, adapter_name="hci0"):
         """
         Instantiates a ``TapTimerManager``
 
@@ -36,9 +37,8 @@ class TapTimerManager(gatt.DeviceManager):
         super().start_discovery(service_uuids=TapTimer.SERVICE_UUIDS)
 
     def make_device(self, mac_address):
-        device = gatt.Device(
-            mac_address=mac_address, manager=self, managed=False)
-        if device.alias() != 'Tap Timer':
+        device = gatt.Device(mac_address=mac_address, manager=self, managed=False)
+        if device.alias() != "Tap Timer":
             return None
         return TapTimer(mac_address=mac_address, manager=self)
 
@@ -51,7 +51,7 @@ class TapTimerManager(gatt.DeviceManager):
             self.listener.tap_timer_discovered(device)
 
 
-class TapTimerManagerListener(object):
+class TapTimerManagerListener:
     """
     Base class for receiving discovery events from ``TapTimerManager``.
 
@@ -87,14 +87,12 @@ class TapTimer(gatt.Device):
     notified with all events
     """
 
-    HOLMAN_CO3015_SERVICE_UUID = '0a75f000-f9ad-467a-e564-3c19163ad543'
-    HOLMAN_CO3011_SERVICE_UUID = 'c521f000-0d70-4d4f-8e43-40d84c50ab38' # model BTX1
-    STATE_CHARACTERISTIC_UUID = '0000f004-0000-1000-8000-00805f9b34fb'
-    MANUAL_CHARACTERISTIC_UUID = '0000f006-0000-1000-8000-00805f9b34fb'
+    HOLMAN_CO3015_SERVICE_UUID = "0a75f000-f9ad-467a-e564-3c19163ad543"
+    HOLMAN_CO3011_SERVICE_UUID = "c521f000-0d70-4d4f-8e43-40d84c50ab38"  # model BTX1
+    STATE_CHARACTERISTIC_UUID = "0000f004-0000-1000-8000-00805f9b34fb"
+    MANUAL_CHARACTERISTIC_UUID = "0000f006-0000-1000-8000-00805f9b34fb"
 
-    SERVICE_UUIDS = [
-        HOLMAN_CO3015_SERVICE_UUID,
-        HOLMAN_CO3011_SERVICE_UUID]
+    SERVICE_UUIDS = [HOLMAN_CO3015_SERVICE_UUID, HOLMAN_CO3011_SERVICE_UUID]
 
     def __init__(self, mac_address, manager):
         """
@@ -150,36 +148,56 @@ class TapTimer(gatt.Device):
     def services_resolved(self):
         super().services_resolved()
 
-        holman_service = next((
-            service for service in self.services
-            if service.uuid in self.SERVICE_UUIDS), None)
+        holman_service = next(
+            (
+                service
+                for service in self.services
+                if service.uuid in self.SERVICE_UUIDS
+            ),
+            None,
+        )
         if holman_service is None:
             if self.listener:
                 # TODO: Use proper exception subclass
-                self.listener.connect_failed(
-                    Exception("Holman GATT service missing"))
+                self.listener.connect_failed(Exception("Holman GATT service missing"))
             return
 
-        self._manual_characteristic = next((
-            char for char in holman_service.characteristics
-            if char.uuid == self.MANUAL_CHARACTERISTIC_UUID), None)
+        self._manual_characteristic = next(
+            (
+                char
+                for char in holman_service.characteristics
+                if char.uuid == self.MANUAL_CHARACTERISTIC_UUID
+            ),
+            None,
+        )
         if self._manual_characteristic is None:
-            # TODO: Use proper exception subclass
-            self.listener.connect_failed(
-                Exception(
-                    "Holman GATT characteristic %s missing",
-                    self.MANUAL_CHARACTERISTIC_UUID))
+            if self.listener:
+                # TODO: Use proper exception subclass
+                self.listener.connect_failed(
+                    Exception(
+                        f"Holman GATT characteristic "
+                        f"{self.MANUAL_CHARACTERISTIC_UUID} missing"
+                    )
+                )
             return
 
-        self._state_characteristic = next((
-            char for char in holman_service.characteristics
-            if char.uuid == self.STATE_CHARACTERISTIC_UUID), None)
+        self._state_characteristic = next(
+            (
+                char
+                for char in holman_service.characteristics
+                if char.uuid == self.STATE_CHARACTERISTIC_UUID
+            ),
+            None,
+        )
         if self._state_characteristic is None:
-            # TODO: Use proper exception subclass
-            self.listener.connect_failed(
-                Exception(
-                    "Holman GATT characteristic %s missing",
-                    self.STATE_CHARACTERISTIC_UUID))
+            if self.listener:
+                # TODO: Use proper exception subclass
+                self.listener.connect_failed(
+                    Exception(
+                        f"Holman GATT characteristic "
+                        f"{self.STATE_CHARACTERISTIC_UUID} missing"
+                    )
+                )
             return
         self._refresh_state()
 
@@ -236,6 +254,7 @@ class TapTimerListener:
     Base class of listeners for a ``TapTimer`` with empty handler
     implementations.
     """
+
     def started_connecting(self):
         pass
 
