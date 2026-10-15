@@ -75,6 +75,13 @@ sudo holmanctl --connect AA:BB:CC:DD:EE:FF # Replace the MAC address with your H
 sudo holmanctl --help # To list all available commands
 ```
 
+To start or stop the tap from a script or cron job, add `--run` or `--stop` to `--connect`. `holmanctl` connects, writes the command, disconnects and exits: with status 0 if the tap timer accepted the command, or 1 if connecting or writing failed.
+
+```
+sudo holmanctl --connect AA:BB:CC:DD:EE:FF --run 10 # Run the tap for 10 minutes (1-255)
+sudo holmanctl --connect AA:BB:CC:DD:EE:FF --stop   # Stop the tap
+```
+
 ## SDK Usage
 
 ### Discovering nearby Holman tap timers
@@ -125,6 +132,8 @@ As with Holman tap timer discovery, remember to start the Bluetooth event loop w
 ### Start the tap running
 
 Once a Holman tap timer is connected you can start the tap with `TapTimer.start(runtime=1)`.  Pass this a runtime (in minutes) for how long to run the tap.
+
+Stop it with `TapTimer.stop()`. Both write to the tap timer asynchronously; your listener's `timer_written()` is called once the command has been accepted, or `timer_write_failed(error)` if it couldn't be written.
 
 ## Development
 

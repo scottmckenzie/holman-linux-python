@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 
 import holman
 
@@ -29,19 +29,60 @@ class TapTimerPrintListener(holman.TapTimerListener):
     def disconnect_succeeded(self):
         self.print("disconnected")
 
+    def timer_written(self):
+        self.print("timer written")
+
+    def timer_write_failed(self, error):
+        self.print("timer write failed: " + str(error))
+
     def print(self, string):
         print("Holman tap timer " + self.tap_timer.mac_address + " " + string)
 
 
 class TapTimerTestListener(TapTimerPrintListener):
-    def __init__(self, tap_timer, auto_reconnect=False):
+    """
+    Drives ``holmanctl``: optionally starts or stops the tap once connected,
+    then disconnects and stops the event loop.
+
+    ``exit_code`` is 0 on success and 1 if connecting or writing failed.
+    ``finished`` is set once there is nothing left to wait for.
+
+    :param run_minutes: start the tap for this many minutes once connected
+    :param stop_tap: stop the tap once connected
+    """
+
+    def __init__(
+        self, tap_timer, auto_reconnect=False, run_minutes=None, stop_tap=False
+    ):
         super().__init__(tap_timer)
         self.auto_reconnect = auto_reconnect
+        self.run_minutes = run_minutes
+        self.stop_tap = stop_tap
+        self.exit_code = 0
+        self.finished = False
+
+    def connect_succeeded(self):
+        super().connect_succeeded()
+        if self.run_minutes is not None:
+            self.tap_timer.start(runtime=self.run_minutes)
+        elif self.stop_tap:
+            self.tap_timer.stop()
 
     def connect_failed(self, error):
         super().connect_failed(error)
-        self.tap_timer.manager.stop()
-        sys.exit(0)
+        self.exit_code = 1
+        self._finish()
+
+    def timer_written(self):
+        super().timer_written()
+        # Disconnect rather than just exiting: BlueZ would otherwise keep
+        # the connection open after this process is gone.
+        self.tap_timer.disconnect()
+
+    def timer_write_failed(self, error):
+        super().timer_write_failed(error)
+        self.exit_code = 1
+        self.tap_timer.disconnect()
 
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
@@ -51,13 +92,30 @@ class TapTimerTestListener(TapTimerPrintListener):
             print("Disconnected, reconnecting...")
             self.tap_timer.connect()
         else:
-            self.tap_timer.manager.stop()
-            sys.exit(0)
+            self._finish()
+
+    def _finish(self):
+        # gatt can report a failure synchronously from inside connect(),
+        # before the event loop runs; stop() is a no-op then, so main()
+        # also checks ``finished`` before calling run().
+        self.finished = True
+        self.tap_timer.manager.stop()
 
 
 class TapTimerManagerPrintListener(holman.TapTimerManagerListener):
     def tap_timer_discovered(self, tap_timer):
         print("Discovered Holman tap timer", tap_timer.mac_address)
+
+
+def minutes(value):
+    """argparse type for a tap runtime: a whole number of minutes, 1-255."""
+    try:
+        runtime = int(value)
+    except ValueError:
+        raise ArgumentTypeError(f"invalid number of minutes: {value!r}") from None
+    if not 1 <= runtime <= 255:
+        raise ArgumentTypeError(f"must be between 1 and 255 minutes, got {runtime}")
+    return runtime
 
 
 def main():
@@ -93,9 +151,26 @@ def main():
         type=str,
         help="Disconnect a Holman tap timer with a given MAC address",
     )
+    arg_action_group = arg_parser.add_mutually_exclusive_group()
+    arg_action_group.add_argument(
+        "--run",
+        metavar="minutes",
+        type=minutes,
+        help="With --connect: run the tap for 1-255 minutes, then exit",
+    )
+    arg_action_group.add_argument(
+        "--stop",
+        action="store_true",
+        help="With --connect: stop the tap, then exit",
+    )
     args = arg_parser.parse_args()
 
+    one_shot = args.run is not None or args.stop
+    if one_shot and not args.connect:
+        arg_parser.error("--run and --stop require --connect")
+
     tap_timer_manager = holman.TapTimerManager(adapter_name=args.adapter)
+    listener = None
 
     if args.discover:
         tap_timer_manager.listener = TapTimerManagerPrintListener()
@@ -103,30 +178,36 @@ def main():
     if args.known:
         for tap_timer in tap_timer_manager.tap_timers():
             print(f"[{tap_timer.mac_address}] {tap_timer.alias()}")
-        return
+        return 0
     elif args.connect:
         tap_timer = holman.TapTimer(mac_address=args.connect, manager=tap_timer_manager)
-        tap_timer.listener = TapTimerTestListener(tap_timer=tap_timer)
+        listener = TapTimerTestListener(
+            tap_timer=tap_timer, run_minutes=args.run, stop_tap=args.stop
+        )
+        tap_timer.listener = listener
         tap_timer.connect()
     elif args.auto:
         tap_timer = holman.TapTimer(mac_address=args.auto, manager=tap_timer_manager)
-        tap_timer.listener = TapTimerTestListener(
-            tap_timer=tap_timer, auto_reconnect=True
-        )
+        listener = TapTimerTestListener(tap_timer=tap_timer, auto_reconnect=True)
+        tap_timer.listener = listener
         tap_timer.connect()
     elif args.disconnect:
         tap_timer = holman.TapTimer(
             mac_address=args.disconnect, manager=tap_timer_manager
         )
         tap_timer.disconnect()
-        return
+        return 0
 
-    print("Terminate with Ctrl+C")
+    if listener and listener.finished:
+        return listener.exit_code
+    if not one_shot:
+        print("Terminate with Ctrl+C")
     try:
         tap_timer_manager.run()
     except KeyboardInterrupt:
         pass
+    return listener.exit_code if listener else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
