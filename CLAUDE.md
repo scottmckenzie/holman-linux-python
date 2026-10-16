@@ -107,6 +107,13 @@ Always use `uv run` to execute Python code and tools. Never call `python`, `pyte
 - All CI/CD checks must pass
 - Minimum 1 approval required
 
+### GitHub Actions
+- Pin every action to a full commit SHA, with the release tag in a comment:
+  `uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1`. Never use a tag or branch
+  (`@v7`, `@main`), which can be moved to different code
+- Look up a release's SHA with `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`, and update the
+  SHA and the comment together
+
 ### Testing Requirements
 - Minimum 80% code coverage
 - All critical paths must have tests
