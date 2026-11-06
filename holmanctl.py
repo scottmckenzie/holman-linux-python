@@ -52,19 +52,20 @@ class TapTimerTestListener(TapTimerPrintListener):
     """
 
     def __init__(
-        self, tap_timer, auto_reconnect=False, run_minutes=None, stop_tap=False
+        self, tap_timer, auto_reconnect=False, run_minutes=None, stop_tap=False, zone=1
     ):
         super().__init__(tap_timer)
         self.auto_reconnect = auto_reconnect
         self.run_minutes = run_minutes
         self.stop_tap = stop_tap
+        self.zone = zone
         self.exit_code = 0
         self.finished = False
 
     def connect_succeeded(self):
         super().connect_succeeded()
         if self.run_minutes is not None:
-            self.tap_timer.start(runtime=self.run_minutes)
+            self.tap_timer.start(runtime=self.run_minutes, zone=self.zone)
         elif self.stop_tap:
             self.tap_timer.stop()
 
@@ -163,6 +164,13 @@ def main():
         action="store_true",
         help="With --connect: stop the tap, then exit",
     )
+    arg_parser.add_argument(
+        "--zone",
+        type=int,
+        choices=(1, 2),
+        default=1,
+        help="Outlet to run: 1 (default), or 2 on BX2 MK1",
+    )
     args = arg_parser.parse_args()
 
     one_shot = args.run is not None or args.stop
@@ -182,7 +190,10 @@ def main():
     elif args.connect:
         tap_timer = holman.TapTimer(mac_address=args.connect, manager=tap_timer_manager)
         listener = TapTimerTestListener(
-            tap_timer=tap_timer, run_minutes=args.run, stop_tap=args.stop
+            tap_timer=tap_timer,
+            run_minutes=args.run,
+            stop_tap=args.stop,
+            zone=args.zone,
         )
         tap_timer.listener = listener
         tap_timer.connect()
