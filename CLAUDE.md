@@ -1,6 +1,6 @@
 # holman-linux-python
 
-Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO3015, BTX1/CO3011) on Linux via BlueZ.
+Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO3015, BTX1/CO3011, BX2 MK1/CO3112, and experimentally BX1/CO3111) on Linux via BlueZ.
 
 ## Tech Stack
 - Python 3, built on the `gatt` library (which wraps BlueZ's D-Bus API)
@@ -21,10 +21,11 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 - Event-driven: nothing happens until `TapTimerManager.run()` starts the GLib loop; results arrive through listener callbacks, not return values
 
 ## Device Protocol
-- Supported models are identified by GATT service UUID — `holman/holman.py:90-95`. A new model means adding its UUID to `SERVICE_UUIDS`
-- Discovery also filters on the BLE alias `'Tap Timer'` — `holman/holman.py:41`
-- Start/stop write a 4-byte value to the manual characteristic (byte 0 = on/off, byte 3 = minutes, capped at 255) — `holman/holman.py:228-243`
-- On/off state is the last byte of the state characteristic — `holman/holman.py:217-221`
+- Supported models are identified by GATT service UUID. A new model means adding its UUID to `SERVICE_UUIDS`
+- Discovery also filters on the exact BLE alias in `TapTimer.ALIASES` (`Tap Timer`, `BX1`, `BX2`)
+- If the service has the `c001` unlock characteristic (BX1/BX2), `services_resolved` writes `AE 8E` to it and only reports `connect_succeeded` once that write is acknowledged
+- Start/stop write a 4-byte value to the manual characteristic (byte 0 = on/off, byte 1 = outlet: 0 = zone 1, 1 = zone 2 on BX2, byte 3 = minutes, capped at 255)
+- On/off state is the last byte of the state characteristic
 - Battery level is not decoded yet (`battery_level()` always returns `None`)
 
 ## Releasing

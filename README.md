@@ -5,6 +5,8 @@ and [BTX1](https://www.holmanindustries.com.au/products/btx1-tap-mounted-smart-v
 The Holman Python SDK for Linux allows you to integrate your Holman(s) into any type of Linux application or script that can execute Python code.
 
 BX2 MK1 (CO3112) is also recognized by its exact advertised name `BX2`.
+BX1 (CO3111) is recognized by its exact advertised name `BX1` (experimental: not yet tested on hardware).
+On BX1 and BX2 units that expose characteristic `c001`, the SDK writes the unlock key `AE 8E` to it before reporting the connection as successful.
 `start(runtime=1, zone=2)` selects its second outlet; zone 1 remains the default.
 For example: `holmanctl --connect AA:BB:CC:DD:EE:FF --run 1 --zone 2`.
 `holmanctl --connect AA:BB:CC:DD:EE:FF --stop` retains the all-off command.

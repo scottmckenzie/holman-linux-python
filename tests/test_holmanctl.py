@@ -153,3 +153,12 @@ def test_invalid_zone_fails_before_manager(monkeypatch, zone):
     with pytest.raises(SystemExit) as error:
         run_holmanctl(monkeypatch, "--connect", MAC, "--run", "1", "--zone", zone)
     assert error.value.code == 2
+
+
+def test_run_unlocks_bx1_before_writing(monkeypatch, simulated_tap_timer):
+    simulated_tap_timer.unlock = True
+    assert run_holmanctl(monkeypatch, "--connect", MAC, "--run", "5") == 0
+    (tap_timer,) = simulated_tap_timer.tap_timers
+    unlock = tap_timer._unlock_characteristic
+    assert unlock.written == [holman.TapTimer.UNLOCK_KEY]
+    assert manual_writes(tap_timer) == [bytes([1, 0, 0, 5])]

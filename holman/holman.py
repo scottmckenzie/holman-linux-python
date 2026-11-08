@@ -38,7 +38,7 @@ class TapTimerManager(gatt.DeviceManager):
 
     def make_device(self, mac_address):
         device = gatt.Device(mac_address=mac_address, manager=self, managed=False)
-        if device.alias() not in ("Tap Timer", "BX2"):
+        if device.alias() not in TapTimer.ALIASES:
             return None
         return TapTimer(mac_address=mac_address, manager=self)
 
@@ -91,6 +91,12 @@ class TapTimer(gatt.Device):
     HOLMAN_CO3011_SERVICE_UUID = "c521f000-0d70-4d4f-8e43-40d84c50ab38"  # model BTX1
     STATE_CHARACTERISTIC_UUID = "0000f004-0000-1000-8000-00805f9b34fb"
     MANUAL_CHARACTERISTIC_UUID = "0000f006-0000-1000-8000-00805f9b34fb"
+    # BX1/BX2 units expose this; writing UNLOCK_KEY to it unlocks the session.
+    UNLOCK_CHARACTERISTIC_UUID = "0000c001-0000-1000-8000-00805f9b34fb"
+    UNLOCK_KEY = bytes([0xAE, 0x8E])
+
+    # Exact advertised names accepted during discovery.
+    ALIASES = ("Tap Timer", "BX1", "BX2")
 
     SERVICE_UUIDS = [HOLMAN_CO3015_SERVICE_UUID, HOLMAN_CO3011_SERVICE_UUID]
 
@@ -110,6 +116,7 @@ class TapTimer(gatt.Device):
         self._battery_level = None
         self._manual_characteristic = None
         self._state_characteristic = None
+        self._unlock_characteristic = None
         self._state = bytes([0])
 
     def connect(self):
@@ -199,6 +206,22 @@ class TapTimer(gatt.Device):
                     )
                 )
             return
+
+        self._unlock_characteristic = next(
+            (
+                char
+                for char in holman_service.characteristics
+                if char.uuid == self.UNLOCK_CHARACTERISTIC_UUID
+            ),
+            None,
+        )
+        if self._unlock_characteristic is not None:
+            # Finish connecting once the unlock write is acknowledged.
+            self._unlock_characteristic.write_value(self.UNLOCK_KEY)
+            return
+        self._finish_connecting()
+
+    def _finish_connecting(self):
         self._refresh_state()
 
         # TODO: Only fire connected event when we read the firmware
@@ -246,11 +269,21 @@ class TapTimer(gatt.Device):
             self._manual_characteristic.write_value(value)
 
     def characteristic_write_value_succeeded(self, characteristic):
+        if characteristic == self._unlock_characteristic:
+            self._finish_connecting()
+            return
         self._refresh_state()
         if self.listener and characteristic == self._manual_characteristic:
             self.listener.timer_written()
 
     def characteristic_write_value_failed(self, characteristic, error):
+        if characteristic == self._unlock_characteristic:
+            if self.listener:
+                # TODO: Use proper exception subclass
+                self.listener.connect_failed(
+                    Exception(f"Holman unlock write failed: {error}")
+                )
+            return
         self._refresh_state()
         if self.listener and characteristic == self._manual_characteristic:
             self.listener.timer_write_failed(error)

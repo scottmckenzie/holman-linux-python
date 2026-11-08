@@ -150,6 +150,7 @@ def make_holman_service():
         state=b"\x00",
         manual=True,
         state_char=True,
+        unlock=False,
     ):
         chars = []
         if manual:
@@ -158,6 +159,8 @@ def make_holman_service():
             chars.append(
                 FakeCharacteristic(holman.TapTimer.STATE_CHARACTERISTIC_UUID, state)
             )
+        if unlock:
+            chars.append(FakeCharacteristic(holman.TapTimer.UNLOCK_CHARACTERISTIC_UUID))
         return FakeService(service_uuid, chars)
 
     return make
@@ -171,12 +174,14 @@ def simulated_tap_timer(monkeypatch, make_holman_service):
     ``disconnect()`` completes.
 
     Set ``connect_error`` or ``write_error`` on the returned object to
-    simulate those failures; ``tap_timers`` collects connected instances.
+    simulate those failures, or ``unlock`` to expose the BX1/BX2 unlock
+    characteristic; ``tap_timers`` collects connected instances.
     """
 
     class Simulation:
         connect_error = None
         write_error = None
+        unlock = False
         tap_timers = []
 
     simulation = Simulation()
@@ -187,7 +192,7 @@ def simulated_tap_timer(monkeypatch, make_holman_service):
         if simulation.connect_error is not None:
             device.connect_failed(simulation.connect_error)
             return
-        service = make_holman_service()
+        service = make_holman_service(unlock=simulation.unlock)
         for char in service.characteristics:
             char.write_value = _reporting_write(device, char)
         device.services = [service]

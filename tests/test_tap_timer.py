@@ -3,6 +3,7 @@ import pytest
 import holman
 
 MANUAL = holman.TapTimer.MANUAL_CHARACTERISTIC_UUID
+UNLOCK = holman.TapTimer.UNLOCK_CHARACTERISTIC_UUID
 
 
 def resolve(tap_timer, *services):
@@ -12,6 +13,10 @@ def resolve(tap_timer, *services):
 
 def manual_char(tap_timer):
     return next(c for c in tap_timer.services[0].characteristics if c.uuid == MANUAL)
+
+
+def unlock_char(tap_timer):
+    return next(c for c in tap_timer.services[0].characteristics if c.uuid == UNLOCK)
 
 
 @pytest.mark.parametrize("uuid", holman.TapTimer.SERVICE_UUIDS)
@@ -154,3 +159,35 @@ def test_invalid_zone_never_writes(make_holman_service, tap_timer, zone):
     with pytest.raises(ValueError, match="zone must be 1 or 2"):
         tap_timer.start(zone=zone)
     assert manual_char(tap_timer).written == []
+
+
+def test_unlock_written_before_connecting(make_holman_service, tap_timer, listener):
+    resolve(tap_timer, make_holman_service(unlock=True))
+    assert unlock_char(tap_timer).written == [bytes([0xAE, 0x8E])]
+    assert listener.events == []
+
+
+def test_unlock_success_finishes_connecting(make_holman_service, tap_timer, listener):
+    resolve(tap_timer, make_holman_service(state=b"\x00\x01", unlock=True))
+    tap_timer.characteristic_write_value_succeeded(unlock_char(tap_timer))
+    assert listener.events == ["connect_succeeded"]
+    assert tap_timer.is_on is True
+
+
+def test_unlock_failure_fails_connecting(make_holman_service, tap_timer, listener):
+    resolve(tap_timer, make_holman_service(unlock=True))
+    tap_timer.characteristic_write_value_failed(unlock_char(tap_timer), "rejected")
+    assert listener.events == [
+        ("connect_failed", "Holman unlock write failed: rejected")
+    ]
+
+
+def test_unlock_without_listener(make_holman_service, tap_timer):
+    resolve(tap_timer, make_holman_service(unlock=True))
+    tap_timer.characteristic_write_value_succeeded(unlock_char(tap_timer))
+    tap_timer.characteristic_write_value_failed(unlock_char(tap_timer), "rejected")
+
+
+def test_no_unlock_characteristic_skips_unlock(make_holman_service, tap_timer):
+    resolve(tap_timer, make_holman_service())
+    assert tap_timer._unlock_characteristic is None
