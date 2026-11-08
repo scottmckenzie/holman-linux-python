@@ -1,13 +1,13 @@
 [project]
 name = "holman"
-version = "0.1.0"
+version = "0.2.0"
 description = "Holman SDK for Python on Linux"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 authors = [{ name = "Scott McKenzie", email = "developers@noizyland.net" }]
 keywords = ["holman"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # python3-dbus is also required at runtime, but comes from apt (not PyPI).
 dependencies = ["gatt>=0.2.7"]
 
@@ -39,12 +39,12 @@ testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.pyrefly]
 project-includes = ["holman", "holmanctl.py", "tests"]
-python-version = "3.10"
+python-version = "3.11"
 search-path = ["typings"]

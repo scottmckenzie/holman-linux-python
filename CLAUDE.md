@@ -5,18 +5,15 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 ## Tech Stack
 - Python 3, built on the `gatt` library (which wraps BlueZ's D-Bus API)
 - `python3-dbus` comes from apt, not PyPI, and is not in `dependencies`
-- Managed with uv; `pyproject.toml` (hatchling backend) is the only packaging config; published to PyPI as `holman`
 
 ## Layout
-- `holman/holman.py` — the whole SDK: `TapTimerManager` (discovery), `TapTimer` (connection + control), and the two listener base classes
 - `holman/__init__.py` — public API re-exports; update it when adding public classes
-- `holmanctl.py` — demo/test CLI, installed as the `holmanctl` console script
 - `tests/` — pytest suite; `conftest.py` swaps `gatt` for an in-memory fake (real `gatt` calls `sys.exit` on import without dbus)
 - `typings/gatt/` — pyrefly stub pinning `gatt` to its BlueZ backend (it picks a backend at runtime, which the checker can't narrow)
 
 ## Development
 - Before finishing a change, run `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .` and `uv run pyrefly check`
-- CI (`.github/workflows/ci.yml`) runs the same checks, with pytest on Python 3.10 and 3.14; keep `requires-python` and that matrix in sync
+- CI (`.github/workflows/ci.yml`) runs the same checks, with pytest on Python 3.11 and 3.14; keep `requires-python` and that matrix in sync
 - Ruff formats the Python snippets in `README.md` too
 - Tests run with `--import-mode=importlib`, so share test helpers as fixtures in `conftest.py`, not by importing modules from `tests/`
 - Tests cover logic only; when adding a `gatt` API call, add it to the fakes in `tests/conftest.py`
@@ -35,59 +32,22 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 
 ## Python Version
 
-Python 3.10 minimum (`requires-python` in pyproject.toml; ruff and pyrefly also target 3.10). Use the newest syntax 3.10 supports:
-- `X | None` instead of `Optional[X]`
-- `list[str]` instead of `List[str]`
-- `dict[str, Any]` instead of `Dict[str, Any]`
-- `tuple[int, str]` instead of `Tuple[int, str]`
+Python 3.11 minimum (`requires-python` in pyproject.toml; ruff and pyrefly also target 3.11). Python 3.10 reached end of life in October 2026. Use the newest syntax 3.11 supports:
 - `X: TypeAlias = ...` (from `typing`) for type aliases; `type X = ...` is 3.12+
 - Match statements for enum/type dispatch where appropriate
+- `typing.Self` for methods returning their own class, and `tomllib` for reading TOML
 
 ## Manage packages
 
 This project uses uv. Do not use pip, pip-tools, poetry, or conda.
 
-- Add runtime dependency: `uv add <package>` (writes to `[project.dependencies]`)
-- Add dev dependency: `uv add --dev <package>` (writes to `[dependency-groups]` per PEP 735)
-- Remove dependency: `uv remove <package>`
-- Sync environment from lockfile: `uv sync`
-- Regenerate lockfile from constraints: `uv lock`
-- Upgrade locked versions: `uv lock --upgrade`
-- Commit `uv.lock` to version control (current uv guidance is to commit it for applications, CLIs, and libraries)
-
 ## Run code
 
 Always use `uv run` to execute Python code and tools. Never call `python`, `pytest`, `ruff`, or other tools directly. They may not resolve to the project's virtual environment.
 
-- Run a script: `uv run python script.py`
-- Run a module: `uv run python -m module_name`
-- Run a tool: `uv run pytest`, `uv run ruff check .`
-- One-off tool (not a project dependency): `uvx <tool>`
-
 ## Test code
 
-- Framework: pytest
-- Run tests: `uv run pytest`
-- Test files go in `tests/` at the project root
-- Test file naming: `test_*.py`
-- Test function naming: `test_*`
-- No `__init__.py` needed in `tests/`
 - Coverage: `uv add --dev coverage`, then `uv run coverage run -m pytest` and `uv run coverage report`
-
-## Lint and format code
-
-- Tool: ruff (handles both linting and formatting)
-- Lint: `uv run ruff check .`
-- Lint and auto-fix: `uv run ruff check --fix .`
-- Format: `uv run ruff format .`
-- Check formatting: `uv run ruff format --check .`
-- Configuration lives in `pyproject.toml` under `[tool.ruff]`
-
-## Check types
-
-- Tool: pyrefly (preferred), ty, or mypy
-- Run: `uv run pyrefly check`, `uv run ty check`, or `uv run mypy .`
-- Configuration lives in `pyproject.toml` under `[tool.pyrefly]`, `[tool.ty]`, or `[tool.mypy]`
 
 ## Avoid these practices
 

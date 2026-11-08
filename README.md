@@ -11,7 +11,7 @@ For example: `holmanctl --connect AA:BB:CC:DD:EE:FF --run 1 --zone 2`.
 The newer BX2 model has not been tested.
 
 ## Prerequisites
-The Holman SDK requires [Python 3.10+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
+The Holman SDK requires [Python 3.11+](https://www.python.org) and a recent installation of [BlueZ](http://www.bluez.org/). It is tested to work fine with BlueZ 5.44, slightly older versions should however work, too.
 
 ## Installation
 These instructions assume a Debian-based Linux.
