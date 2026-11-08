@@ -28,7 +28,8 @@ Python SDK and `holmanctl` CLI for controlling Holman Bluetooth tap timers (CO30
 - Battery level is not decoded yet (`battery_level()` always returns `None`)
 
 ## Releasing
-- Bump `version` in `pyproject.toml`, then `uv lock`, `uv build` and `uv publish`
+- Bump `version` in `pyproject.toml` and run `uv lock`; merge that via PR
+- Then tag the merge commit with the bare version (`git tag 0.2.0`, no `v` prefix) and push the tag. `.github/workflows/publish.yml` builds and publishes to PyPI with trusted publishing (`pypi` environment); it fails if the tag doesn't match `version`
 
 ## Python Version
 
