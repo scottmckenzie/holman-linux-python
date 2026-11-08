@@ -132,3 +132,24 @@ def test_public_api():
         "TapTimerManager",
         "TapTimerManagerListener",
     }
+
+
+@pytest.mark.parametrize("zone", [1, 2])
+def test_run_selects_bx2_outlet(monkeypatch, simulated_tap_timer, zone):
+    assert (
+        run_holmanctl(monkeypatch, "--connect", MAC, "--run", "1", "--zone", str(zone))
+        == 0
+    )
+    (tap_timer,) = simulated_tap_timer.tap_timers
+    assert manual_writes(tap_timer) == [bytes([1, zone - 1, 0, 1])]
+
+
+@pytest.mark.parametrize("zone", ["0", "3", "-1", "hose"])
+def test_invalid_zone_fails_before_manager(monkeypatch, zone):
+    def unexpected_manager(**kwargs):
+        pytest.fail("invalid zone must be rejected before creating a manager")
+
+    monkeypatch.setattr(holman, "TapTimerManager", unexpected_manager)
+    with pytest.raises(SystemExit) as error:
+        run_holmanctl(monkeypatch, "--connect", MAC, "--run", "1", "--zone", zone)
+    assert error.value.code == 2

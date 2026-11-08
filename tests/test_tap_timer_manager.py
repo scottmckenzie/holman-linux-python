@@ -1,3 +1,5 @@
+import pytest
+
 import holman
 
 MAC = "AA:BB:CC:DD:EE:FF"
@@ -16,15 +18,17 @@ def test_start_discovery_filters_on_holman_services(manager):
     assert manager.discovery_uuids == holman.TapTimer.SERVICE_UUIDS
 
 
-def test_make_device_accepts_tap_timer_alias(manager):
-    manager.aliases[MAC] = "Tap Timer"
+@pytest.mark.parametrize("alias", ["Tap Timer", "BX2"])
+def test_make_device_accepts_tap_timer_alias(manager, alias):
+    manager.aliases[MAC] = alias
     device = manager.make_device(MAC)
     assert isinstance(device, holman.TapTimer)
     assert device.mac_address == MAC
 
 
-def test_make_device_rejects_other_alias(manager):
-    manager.aliases[MAC] = "Some Speaker"
+@pytest.mark.parametrize("alias", ["Some Speaker", "BX20", "BX2 extra", "", None])
+def test_make_device_rejects_other_alias(manager, alias):
+    manager.aliases[MAC] = alias
     assert manager.make_device(MAC) is None
 
 

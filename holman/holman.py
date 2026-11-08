@@ -38,7 +38,7 @@ class TapTimerManager(gatt.DeviceManager):
 
     def make_device(self, mac_address):
         device = gatt.Device(mac_address=mac_address, manager=self, managed=False)
-        if device.alias() != "Tap Timer":
+        if device.alias() not in ("Tap Timer", "BX2"):
             return None
         return TapTimer(mac_address=mac_address, manager=self)
 
@@ -225,15 +225,18 @@ class TapTimer(gatt.Device):
         """The name of the tap timer."""
         return str(self.alias())
 
-    def start(self, runtime=1):
+    def start(self, runtime=1, zone=1):
         """
         Turn on the tap for ```runtime``` minutes.
 
         :param runtime: the number of minutes to run the tap
+        :param zone: outlet 1 (default), or outlet 2 on BX2 MK1
         """
+        if type(zone) is not int or zone not in (1, 2):
+            raise ValueError("zone must be 1 or 2")
         runtime = 255 if runtime > 255 else runtime
         if self._manual_characteristic:
-            value = bytes([0x01, 0x00, 0x00, runtime])
+            value = bytes([0x01, zone - 1, 0x00, runtime])
             self._manual_characteristic.write_value(value)
 
     def stop(self):

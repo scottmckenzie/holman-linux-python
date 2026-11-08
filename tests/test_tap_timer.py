@@ -138,3 +138,19 @@ def test_base_listener_accepts_write_events(make_holman_service, tap_timer):
     resolve(tap_timer, make_holman_service())
     tap_timer.characteristic_write_value_succeeded(manual_char(tap_timer))
     tap_timer.characteristic_write_value_failed(manual_char(tap_timer), "rejected")
+
+
+@pytest.mark.parametrize("zone", [1, 2])
+@pytest.mark.parametrize("runtime", [1, 255])
+def test_start_selects_bx2_outlet(make_holman_service, tap_timer, zone, runtime):
+    resolve(tap_timer, make_holman_service())
+    tap_timer.start(runtime=runtime, zone=zone)
+    assert manual_char(tap_timer).written == [bytes([1, zone - 1, 0, runtime])]
+
+
+@pytest.mark.parametrize("zone", [0, 3, -1, True, False, 1.0, 2.0, "2", None])
+def test_invalid_zone_never_writes(make_holman_service, tap_timer, zone):
+    resolve(tap_timer, make_holman_service())
+    with pytest.raises(ValueError, match="zone must be 1 or 2"):
+        tap_timer.start(zone=zone)
+    assert manual_char(tap_timer).written == []
