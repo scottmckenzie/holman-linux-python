@@ -81,7 +81,7 @@ sudo holmanctl --connect AA:BB:CC:DD:EE:FF # Replace the MAC address with your H
 sudo holmanctl --help # To list all available commands
 ```
 
-To start or stop the tap from a script or cron job, add `--run` or `--stop` to `--connect`. `holmanctl` connects, writes the command, disconnects and exits: with status 0 if the device at that address acknowledged the write, or 1 if connecting or writing failed. Status 0 does not confirm that the valve changed state: see [Security](#security).
+To start or stop the tap from a script or cron job, add `--run` or `--stop` to `--connect`. `holmanctl` connects, writes the command, disconnects and exits: with status 0 if the device at that address acknowledged the write, or 1 if it didn't (connecting or writing failed, the device disconnected first, or you interrupted it). Status 0 does not confirm that the valve changed state: see [Security](#security).
 
 ```
 sudo holmanctl --connect AA:BB:CC:DD:EE:FF --run 10 # Run the tap for 10 minutes (1-255)
@@ -167,7 +167,7 @@ sudo .venv/bin/holmanctl --discover
 
 The Holman Bluetooth protocol has no authentication. Any device in Bluetooth range can start or stop a tap timer, and neither the tap timer nor this SDK pairs or encrypts the connection.
 
-The SDK identifies a tap timer only by its MAC address, its advertised name and the GATT service and characteristic UUIDs it reports, and a nearby device can copy all of these. A device that impersonates your tap timer can accept a `--run` or `--stop` command, so `holmanctl` exits with status 0 while the real valve is unchanged. Don't rely on `holmanctl` alone where a missed stop could cause damage.
+`holmanctl --connect` checks only the MAC address you give it and the GATT service and characteristic UUIDs the device reports. Discovery also filters on the advertised name. A nearby device can copy all of these. A device that impersonates your tap timer can accept a `--run` or `--stop` command, so `holmanctl` exits with status 0 while the real valve is unchanged. Don't rely on `holmanctl` alone where a missed stop could cause damage.
 
 ## Support
 
