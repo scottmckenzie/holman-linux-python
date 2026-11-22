@@ -153,3 +153,39 @@ def test_invalid_zone_fails_before_manager(monkeypatch, zone):
     with pytest.raises(SystemExit) as error:
         run_holmanctl(monkeypatch, "--connect", MAC, "--run", "1", "--zone", zone)
     assert error.value.code == 2
+
+
+def test_disconnect_before_write_acknowledged_exits_nonzero(tap_timer, manager):
+    listener = holmanctl.TapTimerTestListener(tap_timer, run_minutes=10)
+    manager.run()
+    listener.connect_succeeded()
+    listener.disconnect_succeeded()
+    assert listener.finished
+    assert listener.exit_code == 1
+
+
+@pytest.mark.parametrize("action", [["--run", "10"], ["--stop"]])
+def test_unacknowledged_write_exits_nonzero(monkeypatch, simulated_tap_timer, action):
+    simulated_tap_timer.write_unacknowledged = True
+    assert run_holmanctl(monkeypatch, "--connect", MAC, *action) == 1
+
+
+def test_interrupt_before_write_acknowledged_exits_nonzero(
+    monkeypatch, manager, simulated_tap_timer
+):
+    def interrupt():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(manager, "run", interrupt)
+    monkeypatch.setattr(holman, "TapTimerManager", lambda adapter_name: manager)
+    simulated_tap_timer.write_unacknowledged = True
+    assert run_holmanctl(monkeypatch, "--connect", MAC, "--run", "10") == 1
+
+
+def test_interrupt_without_action_exits_zero(monkeypatch, manager, simulated_tap_timer):
+    def interrupt():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(manager, "run", interrupt)
+    monkeypatch.setattr(holman, "TapTimerManager", lambda adapter_name: manager)
+    assert run_holmanctl(monkeypatch, "--connect", MAC) == 0

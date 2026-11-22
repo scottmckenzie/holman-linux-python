@@ -45,6 +45,9 @@ class TapTimerTestListener(TapTimerPrintListener):
     then disconnects and stops the event loop.
 
     ``exit_code`` is 0 on success and 1 if connecting or writing failed.
+    With ``run_minutes`` or ``stop_tap``, success means the tap timer
+    acknowledged the write: disconnecting or being interrupted first is
+    a failure.
     ``finished`` is set once there is nothing left to wait for.
 
     :param run_minutes: start the tap for this many minutes once connected
@@ -59,7 +62,7 @@ class TapTimerTestListener(TapTimerPrintListener):
         self.run_minutes = run_minutes
         self.stop_tap = stop_tap
         self.zone = zone
-        self.exit_code = 0
+        self.exit_code = 1 if run_minutes is not None or stop_tap else 0
         self.finished = False
 
     def connect_succeeded(self):
@@ -76,6 +79,7 @@ class TapTimerTestListener(TapTimerPrintListener):
 
     def timer_written(self):
         super().timer_written()
+        self.exit_code = 0
         # Disconnect rather than just exiting: BlueZ would otherwise keep
         # the connection open after this process is gone.
         self.tap_timer.disconnect()
