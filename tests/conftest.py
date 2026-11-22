@@ -171,12 +171,14 @@ def simulated_tap_timer(monkeypatch, make_holman_service):
     ``disconnect()`` completes.
 
     Set ``connect_error`` or ``write_error`` on the returned object to
-    simulate those failures; ``tap_timers`` collects connected instances.
+    simulate those failures, or ``write_unacknowledged`` for a write that
+    never reports back; ``tap_timers`` collects connected instances.
     """
 
     class Simulation:
         connect_error = None
         write_error = None
+        write_unacknowledged = False
         tap_timers = []
 
     simulation = Simulation()
@@ -196,6 +198,8 @@ def simulated_tap_timer(monkeypatch, make_holman_service):
     def _reporting_write(device, char):
         def write_value(value):
             char.written.append(value)
+            if simulation.write_unacknowledged:
+                return
             if simulation.write_error is not None:
                 device.characteristic_write_value_failed(char, simulation.write_error)
             else:
